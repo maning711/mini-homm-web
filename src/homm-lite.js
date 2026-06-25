@@ -22,7 +22,6 @@ const els = {
   castleGrowth: document.getElementById("castle-growth"),
   castleBuildings: document.getElementById("castle-buildings"),
   heroList: document.getElementById("hero-list"),
-  recruitBtn: document.getElementById("recruit-btn"),
   openCastleBtn: document.getElementById("open-castle-btn"),
   mapScreen: document.getElementById("map-screen"),
   castleView: document.getElementById("castle-view"),
@@ -1136,7 +1135,6 @@ function render() {
   els.castleView.classList.toggle("hidden", state.screen !== "castle");
 }
 
-els.recruitBtn.addEventListener("click", () => recruitTier(1));
 els.openCastleBtn.addEventListener("click", () => {
   openCastleScreen(false);
   render();
