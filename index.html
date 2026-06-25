@@ -157,6 +157,7 @@
       .entity.resource { color: #ffd66d; }
       .entity.castle { color: #ff9f6e; }
       .entity.mine { color: #77d79a; }
+      .entity.shrine { color: #c4a7ff; }
       .entity.hero-blue { color: #8ac1ff; }
       .entity.hero-red { color: #ff9595; }
 
@@ -286,6 +287,20 @@
         background: linear-gradient(180deg, #515b68 0%, #3e4650 100%);
       }
 
+      button.action.danger {
+        background: linear-gradient(180deg, #a25757 0%, #7d3a3a 100%);
+      }
+
+      button.action:disabled {
+        cursor: not-allowed;
+        filter: grayscale(0.5);
+        opacity: 0.58;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
       .tip {
         font-size: 13px;
         color: var(--muted);
@@ -311,7 +326,7 @@
           <div class="pill-row">
             <div class="pill">20×20 地图</div>
             <div class="pill">回合制</div>
-            <div class="pill">单英雄原型</div>
+            <div class="pill">双英雄经营</div>
           </div>
         </div>
         <div class="map-wrap">
@@ -340,28 +355,67 @@
         </div>
 
         <div class="card">
-          <h3>英雄状态</h3>
+          <h3>当前英雄</h3>
+          <div class="row"><span>名称</span><strong id="hero-name"></strong></div>
           <div class="row"><span>位置</span><strong id="hero-pos"></strong></div>
           <div class="row"><span>攻击</span><strong id="hero-attack"></strong></div>
           <div class="row"><span>防御</span><strong id="hero-defense"></strong></div>
           <div class="row"><span>战力</span><strong id="hero-power"></strong></div>
+          <div class="row"><span>等级</span><strong id="hero-level"></strong></div>
+          <div class="row"><span>经验</span><strong id="hero-xp"></strong></div>
           <div class="army-list" id="army"></div>
+        </div>
+
+        <div class="card">
+          <h3>战役目标</h3>
+          <div class="row"><span>矿点</span><strong id="objective-mines"></strong></div>
+          <div class="row"><span>击败敌军</span><strong id="objective-enemies"></strong></div>
+          <div class="row"><span>城堡</span><strong id="objective-castle"></strong></div>
+          <div class="row"><span>威胁</span><strong id="objective-threat"></strong></div>
+        </div>
+
+        <div class="card">
+          <h3>地块情报</h3>
+          <div class="tip" id="tile-info"></div>
         </div>
 
         <div class="card">
           <h3>城堡</h3>
           <div class="row"><span>等级</span><strong id="castle-level"></strong></div>
           <div class="row"><span>驻军增长</span><strong id="castle-growth"></strong></div>
+          <div class="row"><span>建筑</span><strong id="castle-buildings"></strong></div>
           <div class="actions">
-            <button class="action" id="recruit-btn">招募本周兵力</button>
+            <button class="action" id="open-castle-btn">进入城堡</button>
             <button class="action secondary" id="end-turn-btn">结束今天</button>
           </div>
+          <div class="tip" id="action-info"></div>
+        </div>
+
+        <div class="card hidden" id="castle-screen">
+          <h3>城堡发展</h3>
+          <div class="row"><span>警戒</span><strong id="castle-alert"></strong></div>
+          <div class="row"><span>本周预备役</span><strong id="castle-reserve"></strong></div>
+          <div class="actions">
+            <button class="action" id="recruit-btn">招募本周兵力</button>
+            <button class="action secondary" id="build-townhall-btn">升级议事厅</button>
+            <button class="action secondary" id="build-barracks-btn">升级兵营</button>
+            <button class="action secondary" id="hire-hero-btn">酒馆招募英雄</button>
+            <button class="action secondary" id="save-btn">保存进度</button>
+            <button class="action secondary" id="load-btn">读取进度</button>
+            <button class="action danger" id="restart-btn">重新开始</button>
+            <button class="action secondary" id="close-castle-btn">返回地图</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>英雄列表</h3>
+          <div class="army-list" id="hero-list"></div>
         </div>
 
         <div class="card">
           <h3>说明</h3>
           <div class="tip">
-            点击地图上的高亮格移动英雄。拾取资源、占矿、打掉红色敌军。每天结束时资源矿产出，城堡每周刷新兵力。第一版战斗用总战力直接结算。
+            点击地图上的高亮格移动英雄。拾取资源、占矿、访问紫色神殿、打掉红色敌军。每天结束时资源矿和议事厅产出，城堡每周刷新兵力；达成战役目标即可胜利。
           </div>
         </div>
 
