@@ -682,9 +682,8 @@ function spawnEnemy() {
 
 function openCastleScreen(force = false) {
   const hero = getActiveHero();
-  const nearCastle = Math.abs(hero.x - state.castle.x) + Math.abs(hero.y - state.castle.y) <= 1;
-  if (!force && !nearCastle) {
-    log("英雄需要先靠近城堡，或者直接点击城堡格进入。");
+  if (!hero && !force) {
+    log("当前没有可进入城堡的英雄。");
     return;
   }
   state.screen = "castle";
@@ -1122,8 +1121,7 @@ function formatCost(cost) {
 }
 
 function updateActionStates(hero) {
-  const nearCastle = Math.abs(hero.x - state.castle.x) + Math.abs(hero.y - state.castle.y) <= 1;
-  els.openCastleBtn.disabled = state.gameOver || state.screen === "castle" || !nearCastle;
+  els.openCastleBtn.disabled = state.gameOver || state.screen === "castle";
   els.endTurnBtn.disabled = state.gameOver;
 }
 
