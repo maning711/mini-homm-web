@@ -258,6 +258,11 @@
         gap: 8px;
       }
 
+      .spell-actions {
+        display: grid;
+        gap: 8px;
+      }
+
       .spell-item,
       .garrison-item {
         display: flex;
@@ -525,6 +530,7 @@
                 <div class="castle-panel">
                   <h4>法术书</h4>
                   <div class="spell-list" id="spell-list"></div>
+                  <div class="spell-actions" id="spell-actions"></div>
                 </div>
                 <div class="castle-panel">
                   <h4>驻军与招募</h4>
@@ -573,6 +579,7 @@
           <div class="row"><span>战力</span><strong id="hero-power"></strong></div>
           <div class="row"><span>等级</span><strong id="hero-level"></strong></div>
           <div class="row"><span>经验</span><strong id="hero-xp"></strong></div>
+          <div class="row"><span>状态</span><strong id="hero-status"></strong></div>
           <div class="army-list" id="army"></div>
         </div>
 

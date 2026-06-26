@@ -12,6 +12,7 @@ const els = {
   heroPower: document.getElementById("hero-power"),
   heroLevel: document.getElementById("hero-level"),
   heroXp: document.getElementById("hero-xp"),
+  heroStatus: document.getElementById("hero-status"),
   army: document.getElementById("army"),
   objectiveMines: document.getElementById("objective-mines"),
   objectiveEnemies: document.getElementById("objective-enemies"),
@@ -37,6 +38,7 @@ const els = {
   districtCost: document.getElementById("district-cost"),
   districtActionBtn: document.getElementById("district-action-btn"),
   spellList: document.getElementById("spell-list"),
+  spellActions: document.getElementById("spell-actions"),
   garrisonList: document.getElementById("garrison-list"),
   endTurnBtn: document.getElementById("end-turn-btn"),
   saveBtn: document.getElementById("save-btn"),
@@ -109,6 +111,7 @@ function createInitialState() {
     screen: "map",
     selectedDistrict: "townHall",
     activeHeroId: "hero-1",
+    activeSpell: null,
     defeatedEnemies: 0,
     castleRaids: 0,
     gameOver: false,
@@ -127,6 +130,7 @@ function createInitialState() {
         xp: 0,
         mana: 0,
         spells: [],
+        effects: [],
         army: [
           { tier: 1, count: 14 },
           { tier: 2, count: 4 },
@@ -145,6 +149,7 @@ function createInitialState() {
         xp: 0,
         mana: 0,
         spells: [],
+        effects: [],
         army: [
           { tier: 1, count: 8 },
           { tier: 3, count: 2 },
@@ -281,7 +286,46 @@ function getReachable(hero = getActiveHero()) {
 
 function getHeroPower(hero) {
   const armyPower = hero.army.reduce((sum, unit) => sum + unit.count * (unit.tier * 3 + 2), 0);
-  return armyPower + hero.attack * 4 + hero.defense * 3 + hero.level * 4 + hero.spells.length * 2;
+  const bonusAttack = getEffectValue(hero, "attack");
+  const bonusDefense = getEffectValue(hero, "defense");
+  return armyPower + (hero.attack + bonusAttack) * 4 + (hero.defense + bonusDefense) * 3 + hero.level * 4 + hero.spells.length * 2;
+}
+
+function getEffectValue(hero, stat) {
+  return hero.effects
+    .filter((effect) => effect.stat === stat)
+    .reduce((sum, effect) => sum + effect.value, 0);
+}
+
+function getHeroMoveLimit(hero) {
+  return hero.maxMoves + getEffectValue(hero, "move");
+}
+
+function applyHeroEffect(hero, effect) {
+  const existing = hero.effects.find((item) => item.id === effect.id);
+  if (existing) {
+    existing.days = Math.max(existing.days, effect.days);
+    existing.value = effect.value;
+    return;
+  }
+  hero.effects.push({ ...effect });
+}
+
+function tickHeroEffects(hero) {
+  hero.effects = hero.effects
+    .map((effect) => ({ ...effect, days: effect.days - 1 }))
+    .filter((effect) => effect.days > 0);
+}
+
+function formatHeroEffects(hero) {
+  if (!hero.effects.length) return "无";
+  return hero.effects.map((effect) => `${effect.name} ${effect.days}天`).join(" / ");
+}
+
+function tickHeroEffects(hero) {
+  hero.effects = hero.effects
+    .map((effect) => ({ ...effect, days: effect.days - 1 }))
+    .filter((effect) => effect.days > 0);
 }
 
 function getDistrictLevel(key) {
@@ -322,6 +366,30 @@ function getDistrictCost(key, nextLevel = getDistrictLevel(key) + 1) {
     fort: { gold: 900 + nextLevel * 520, wood: nextLevel + 1, ore: nextLevel + 1 },
   };
   return costTable[key];
+}
+
+function getDistrictRequirement(key, nextLevel = getDistrictLevel(key) + 1) {
+  const requirementTable = {
+    townHall: null,
+    barracks: nextLevel >= 2 ? { key: "townHall", level: 2 } : null,
+    mageTower: { key: "townHall", level: 2 },
+    market: { key: "townHall", level: 1 },
+    tavern: { key: "market", level: 1 },
+    fort: nextLevel >= 2 ? { key: "barracks", level: 2 } : { key: "townHall", level: 1 },
+  };
+  return requirementTable[key];
+}
+
+function getDistrictRequirementText(key, nextLevel = getDistrictLevel(key) + 1) {
+  const requirement = getDistrictRequirement(key, nextLevel);
+  if (!requirement) return "无前置要求";
+  return `${DISTRICTS[requirement.key].name} 需要达到 Lv.${requirement.level}`;
+}
+
+function meetsDistrictRequirement(key, nextLevel = getDistrictLevel(key) + 1) {
+  const requirement = getDistrictRequirement(key, nextLevel);
+  if (!requirement) return true;
+  return getDistrictLevel(requirement.key) >= requirement.level;
 }
 
 function canAfford(cost) {
@@ -365,6 +433,66 @@ function getCastleGrowthSummary() {
 
 function getSpellChoices() {
   return SPELL_POOL.slice(0, state.castle.mageTowerLevel + 1);
+}
+
+function canCastSpell(hero, spell) {
+  const costs = {
+    疾行术: 1,
+    护体石肤: 1,
+    火焰箭: 2,
+    侦察之眼: 1,
+    鼓舞术: 2,
+  };
+  return hero.spells.includes(spell) && hero.mana >= (costs[spell] || 1);
+}
+
+function castSpell(spell) {
+  const hero = getActiveHero();
+  if (!canCastSpell(hero, spell)) {
+    log(`${hero.name} 当前无法施放 ${spell}。`);
+    render();
+    return;
+  }
+
+  const costs = {
+    疾行术: 1,
+    护体石肤: 1,
+    火焰箭: 2,
+    侦察之眼: 1,
+    鼓舞术: 2,
+  };
+  hero.mana -= costs[spell] || 1;
+
+  if (spell === "疾行术") {
+    applyHeroEffect(hero, { id: "haste", name: "疾行", stat: "move", value: 2, days: 2 });
+    hero.moves = Math.min(getHeroMoveLimit(hero), hero.moves + 2);
+    log(`${hero.name} 施放了疾行术，接下来 2 天移动力提高。`);
+  } else if (spell === "护体石肤") {
+    applyHeroEffect(hero, { id: "stone-skin", name: "石肤", stat: "defense", value: 1, days: 3 });
+    log(`${hero.name} 施放了护体石肤，接下来 3 天防御提高。`);
+  } else if (spell === "火焰箭") {
+    const target = state.enemies
+      .map((enemy) => ({ enemy, dist: Math.abs(enemy.x - hero.x) + Math.abs(enemy.y - hero.y) }))
+      .filter((item) => item.dist <= 4)
+      .sort((a, b) => a.dist - b.dist)[0]?.enemy;
+    if (!target) {
+      hero.mana += costs[spell] || 1;
+      log("附近没有可被火焰箭命中的敌军。");
+      render();
+      return;
+    }
+    target.power = Math.max(1, target.power - 8);
+    log(`${hero.name} 用火焰箭重创了附近敌军。`);
+  } else if (spell === "侦察之眼") {
+    applyHeroEffect(hero, { id: "scout-eye", name: "侦察", stat: "move", value: 1, days: 3 });
+    hero.moves = Math.min(getHeroMoveLimit(hero), hero.moves + 1);
+    log(`${hero.name} 施放侦察之眼，接下来 3 天机动性提高。`);
+  } else if (spell === "鼓舞术") {
+    applyHeroEffect(hero, { id: "morale", name: "鼓舞", stat: "attack", value: 1, days: 2 });
+    log(`${hero.name} 施放鼓舞术，接下来 2 天攻击提高。`);
+  }
+
+  render();
 }
 
 function handleTileClick(x, y) {
@@ -542,7 +670,8 @@ function endTurn() {
   }
 
   state.heroes.forEach((hero) => {
-    hero.moves = hero.maxMoves;
+    tickHeroEffects(hero);
+    hero.moves = getHeroMoveLimit(hero);
     if (state.castle.tavernLevel >= 2) hero.mana = Math.min(5 + state.castle.mageTowerLevel, hero.mana + 1);
   });
 
@@ -844,6 +973,11 @@ function upgradeDistrict(key) {
     return;
   }
   const nextLevel = level + 1;
+  if (!meetsDistrictRequirement(key, nextLevel)) {
+    log(`${DISTRICTS[key].name} 尚未满足前置条件：${getDistrictRequirementText(key, nextLevel)}。`);
+    render();
+    return;
+  }
   const cost = getDistrictCost(key, nextLevel);
   if (!canAfford(cost)) {
     log(`${DISTRICTS[key].name} 升级资源不足。`);
@@ -893,7 +1027,7 @@ function getSelectedDistrictAction() {
   }
   return {
     label: `升级到 ${DISTRICTS[key].levelNames[level + 1]}`,
-    disabled: !canAfford(getDistrictCost(key, level + 1)),
+    disabled: !canAfford(getDistrictCost(key, level + 1)) || !meetsDistrictRequirement(key, level + 1),
     onClick: () => upgradeDistrict(key),
   };
 }
@@ -997,6 +1131,7 @@ function renderCastleView() {
   const districtLevel = getDistrictLevel(state.selectedDistrict);
   const nextCost = districtLevel >= 3 ? null : getDistrictCost(state.selectedDistrict, districtLevel + 1);
   const action = getSelectedDistrictAction();
+  const requirementText = districtLevel >= 3 ? "已满足全部前置" : getDistrictRequirementText(state.selectedDistrict, districtLevel + 1);
 
   els.castleFlavor.textContent = `${hero.name} 正在城内处理建设、补给与魔法事务。`;
   els.castleViewLevel.textContent = `Lv.${state.castle.level}`;
@@ -1031,7 +1166,9 @@ function renderCastleView() {
 
   els.districtTitle.textContent = `${district.name} · ${district.levelNames[districtLevel]}`;
   els.districtDesc.textContent = district.desc;
-  els.districtCost.textContent = nextCost ? `升级消耗: ${formatCost(nextCost)}` : "已经达到当前原型的最高等级。";
+  els.districtCost.textContent = nextCost
+    ? `升级消耗: ${formatCost(nextCost)} | 前置: ${requirementText}`
+    : "已经达到当前原型的最高等级。";
   els.districtActionBtn.textContent = action.label;
   els.districtActionBtn.disabled = state.gameOver || action.disabled;
   els.districtActionBtn.onclick = action.onClick;
@@ -1039,6 +1176,19 @@ function renderCastleView() {
   els.spellList.innerHTML = hero.spells.length
     ? hero.spells.map((spell) => `<div class="spell-item"><span>${spell}</span><strong>法力 ${hero.mana}</strong></div>`).join("")
     : `<div class="spell-item"><span>暂无法术</span><strong>需要法师塔</strong></div>`;
+
+  els.spellActions.innerHTML = hero.spells.length
+    ? hero.spells
+        .map(
+          (spell) =>
+            `<button class="action secondary" data-cast-spell="${spell}" ${canCastSpell(hero, spell) ? "" : "disabled"}>施放 ${spell}</button>`,
+        )
+        .join("")
+    : "";
+
+  els.spellActions.querySelectorAll("[data-cast-spell]").forEach((button) => {
+    button.addEventListener("click", () => castSpell(button.dataset.castSpell));
+  });
 
   els.garrisonList.innerHTML = UNIT_OFFERS.map((offer) => {
     const available = state.castle.reserve[offer.tier] || 0;
@@ -1067,6 +1217,7 @@ function renderSidebar() {
   els.heroPower.textContent = String(getHeroPower(hero));
   els.heroLevel.textContent = `Lv.${hero.level}`;
   els.heroXp.textContent = hero.level >= 5 ? "满级" : `${hero.xp} / ${getNextLevelXp(hero)}`;
+  els.heroStatus.textContent = formatHeroEffects(hero);
   els.objectiveMines.textContent = `${getOwnedMineCount()} / ${WIN_TARGETS.mines}`;
   els.objectiveEnemies.textContent = `${state.defeatedEnemies} / ${WIN_TARGETS.defeatedEnemies}`;
   els.objectiveCastle.textContent = `Lv.${state.castle.level} / Lv.${WIN_TARGETS.castleLevel}`;
