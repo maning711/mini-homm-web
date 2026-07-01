@@ -97,19 +97,48 @@
         overflow: auto;
         border-radius: 18px;
         border: 1px solid rgba(255, 255, 255, 0.06);
-        background: rgba(8, 10, 14, 0.7);
+        background:
+          radial-gradient(circle at 18% 18%, rgba(124, 210, 255, 0.08), transparent 28%),
+          radial-gradient(circle at 82% 18%, rgba(215, 180, 106, 0.08), transparent 24%),
+          linear-gradient(180deg, rgba(12, 16, 21, 0.88) 0%, rgba(8, 10, 14, 0.94) 100%);
       }
 
       .view-wrap {
         position: relative;
       }
 
+      .map-overview {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .map-overview-card {
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        display: grid;
+        gap: 4px;
+      }
+
+      .map-overview-card .label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .map-overview-card .value {
+        font-size: 18px;
+        font-weight: 700;
+      }
+
       .map {
         display: grid;
         grid-template-columns: repeat(20, 32px);
         grid-template-rows: repeat(20, 32px);
-        gap: 2px;
-        padding: 12px;
+        gap: 3px;
+        padding: 14px;
         width: fit-content;
         margin: 0 auto;
       }
@@ -126,6 +155,262 @@
           radial-gradient(circle at 20% 18%, rgba(255, 195, 120, 0.18), transparent 24%),
           radial-gradient(circle at 78% 16%, rgba(124, 210, 255, 0.12), transparent 20%),
           linear-gradient(180deg, rgba(43, 34, 29, 0.95) 0%, rgba(22, 19, 24, 0.96) 100%);
+      }
+
+      .battle-view {
+        min-height: 760px;
+        padding: 18px;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        gap: 14px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background:
+          radial-gradient(circle at 20% 18%, rgba(255, 120, 120, 0.12), transparent 24%),
+          radial-gradient(circle at 78% 18%, rgba(94, 167, 255, 0.12), transparent 20%),
+          linear-gradient(180deg, rgba(32, 18, 18, 0.96) 0%, rgba(18, 18, 24, 0.98) 100%);
+      }
+
+      .battle-result {
+        min-height: 760px;
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+        align-content: start;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background:
+          radial-gradient(circle at 24% 18%, rgba(215, 180, 106, 0.14), transparent 26%),
+          radial-gradient(circle at 80% 18%, rgba(94, 167, 255, 0.12), transparent 24%),
+          linear-gradient(180deg, rgba(22, 22, 26, 0.98) 0%, rgba(18, 20, 26, 0.98) 100%);
+      }
+
+      .battle-result.defeat {
+        background:
+          radial-gradient(circle at 24% 18%, rgba(160, 87, 87, 0.18), transparent 26%),
+          radial-gradient(circle at 80% 18%, rgba(110, 120, 145, 0.12), transparent 24%),
+          linear-gradient(180deg, rgba(28, 20, 22, 0.98) 0%, rgba(20, 18, 24, 0.98) 100%);
+      }
+
+      .battle-result-head h2 {
+        margin: 0;
+        font-size: 32px;
+      }
+
+      .battle-result-head p {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .battle-result-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .battle-result-card {
+        padding: 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        display: grid;
+        gap: 6px;
+      }
+
+      .battle-result-card .label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .battle-result-card .value {
+        font-size: 20px;
+        font-weight: 700;
+      }
+
+      .battle-result-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .battle-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .battle-headline h2 {
+        margin: 0;
+        font-size: 28px;
+      }
+
+      .battle-headline p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .battle-stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .battle-order {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .battle-order-chip {
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .battle-order-chip.player {
+        color: #dcecff;
+        border-color: rgba(94, 167, 255, 0.28);
+      }
+
+      .battle-order-chip.enemy {
+        color: #ffe2e2;
+        border-color: rgba(255, 115, 115, 0.28);
+      }
+
+      .battle-order-chip.active {
+        color: var(--text);
+        border-color: rgba(255, 214, 92, 0.7);
+        box-shadow: inset 0 0 0 1px rgba(255, 214, 92, 0.25);
+      }
+
+      .battle-order-chip.acted {
+        opacity: 0.55;
+      }
+
+      .battle-stat {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+
+      .battle-stat .label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .battle-stat .value {
+        margin-top: 4px;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .battle-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.65fr);
+        gap: 14px;
+      }
+
+      .battle-grid {
+        display: grid;
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+        gap: 10px;
+        align-content: start;
+      }
+
+      .battle-cell {
+        aspect-ratio: 1;
+        min-height: 82px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.03);
+        display: grid;
+        place-items: center;
+        position: relative;
+        cursor: pointer;
+        transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      }
+
+      .battle-cell:hover {
+        transform: translateY(-1px);
+      }
+
+      .battle-cell.reachable {
+        border-color: rgba(94, 167, 255, 0.7);
+        background: rgba(94, 167, 255, 0.08);
+      }
+
+      .battle-cell.attackable {
+        border-color: rgba(255, 115, 115, 0.75);
+        background: rgba(255, 115, 115, 0.08);
+      }
+
+      .battle-cell.selected {
+        border-color: rgba(255, 214, 92, 0.95);
+        box-shadow: inset 0 0 0 1px rgba(255, 214, 92, 0.3);
+      }
+
+      .battle-unit {
+        width: calc(100% - 8px);
+        height: calc(100% - 8px);
+        border-radius: 12px;
+        display: grid;
+        grid-template-rows: 1fr auto auto;
+        align-items: center;
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.2;
+        padding: 8px 6px 6px;
+        font-weight: 600;
+        overflow: hidden;
+      }
+
+      .battle-unit.player {
+        background: linear-gradient(180deg, rgba(94, 167, 255, 0.26) 0%, rgba(94, 167, 255, 0.12) 100%);
+        color: #dcecff;
+      }
+
+      .battle-unit.enemy {
+        background: linear-gradient(180deg, rgba(255, 115, 115, 0.26) 0%, rgba(255, 115, 115, 0.12) 100%);
+        color: #ffe2e2;
+      }
+
+      .battle-unit .portrait {
+        display: grid;
+        place-items: center;
+        font-size: 28px;
+        line-height: 1;
+      }
+
+      .battle-unit .name {
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .battle-unit .count {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .battle-side {
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+
+      .battle-panel {
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        background: rgba(255, 255, 255, 0.04);
+        display: grid;
+        gap: 10px;
       }
 
       .castle-head {
@@ -267,11 +552,19 @@
       .garrison-item {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         gap: 10px;
         padding: 8px 10px;
         border-radius: 10px;
         background: rgba(0, 0, 0, 0.18);
         font-size: 13px;
+      }
+
+      .spell-item span,
+      .garrison-item span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
       }
 
       .castle-actions-inline {
@@ -284,24 +577,35 @@
         height: 32px;
         border: 0;
         padding: 0;
-        border-radius: 8px;
+        border-radius: 9px;
         color: var(--text);
         background: #24303a;
         position: relative;
         cursor: pointer;
-        transition: transform 120ms ease, outline-color 120ms ease, filter 120ms ease;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 1px 0 rgba(0, 0, 0, 0.28);
+        transition: transform 120ms ease, outline-color 120ms ease, filter 120ms ease, box-shadow 120ms ease;
       }
 
       .tile:hover {
         transform: translateY(-1px);
         filter: brightness(1.08);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 10px rgba(0, 0, 0, 0.22);
       }
 
-      .tile.grass { background: #335540; }
-      .tile.forest { background: #244737; }
-      .tile.hill { background: #5c4935; }
-      .tile.water { background: #204c74; }
-      .tile.road { background: #596068; }
+      .tile.grass { background: linear-gradient(180deg, #416d4e 0%, #315440 100%); }
+      .tile.forest { background: linear-gradient(180deg, #305b44 0%, #1f4030 100%); }
+      .tile.hill { background: linear-gradient(180deg, #76604b 0%, #584532 100%); }
+      .tile.water { background: linear-gradient(180deg, #366794 0%, #1d4669 100%); }
+      .tile.road { background: linear-gradient(180deg, #727a83 0%, #555d66 100%); }
+
+      .tile::after {
+        content: "";
+        position: absolute;
+        inset: 1px;
+        border-radius: 8px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 48%);
+        pointer-events: none;
+      }
 
       .tile.reachable {
         outline: 2px solid rgba(94, 167, 255, 0.7);
@@ -313,14 +617,31 @@
         outline-offset: -2px;
       }
 
+      .tile.castle-tile {
+        box-shadow: inset 0 0 0 1px rgba(255, 159, 110, 0.32), 0 0 0 1px rgba(255, 159, 110, 0.18);
+      }
+
+      .tile.mine-tile {
+        box-shadow: inset 0 0 0 1px rgba(119, 215, 154, 0.25);
+      }
+
+      .tile.shrine-tile {
+        box-shadow: inset 0 0 0 1px rgba(196, 167, 255, 0.24);
+      }
+
+      .tile.enemy-tile {
+        box-shadow: inset 0 0 0 1px rgba(255, 115, 115, 0.24);
+      }
+
       .entity {
         position: absolute;
         inset: 0;
         display: grid;
         place-items: center;
-        font-size: 20px;
+        font-size: 18px;
         line-height: 1;
         pointer-events: none;
+        z-index: 1;
       }
 
       .entity.resource { color: #ffd66d; }
@@ -338,6 +659,7 @@
         color: #fff;
         font-weight: 700;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        z-index: 1;
       }
 
       .panel {
@@ -499,8 +821,65 @@
           </div>
         </div>
         <div class="view-wrap">
+          <div class="map-overview" id="map-overview">
+            <div class="map-overview-card"><div class="label">城堡发展</div><div class="value" id="map-overview-castle"></div></div>
+            <div class="map-overview-card"><div class="label">已占矿点</div><div class="value" id="map-overview-mines"></div></div>
+            <div class="map-overview-card"><div class="label">敌军威胁</div><div class="value" id="map-overview-threat"></div></div>
+            <div class="map-overview-card"><div class="label">北境情势</div><div class="value" id="map-overview-front"></div></div>
+          </div>
           <div class="map-wrap" id="map-screen">
             <div class="map" id="map"></div>
+          </div>
+          <div class="battle-view hidden" id="battle-view">
+            <div class="battle-head">
+              <div class="battle-headline">
+                <h2>遭遇战</h2>
+                <p id="battle-flavor"></p>
+              </div>
+              <button class="action secondary" id="battle-retreat-btn">强制撤退</button>
+            </div>
+            <div class="battle-stats">
+              <div class="battle-stat"><div class="label">当前行动</div><div class="value" id="battle-turn"></div></div>
+              <div class="battle-stat"><div class="label">我方兵力</div><div class="value" id="battle-player-power"></div></div>
+              <div class="battle-stat"><div class="label">敌方兵力</div><div class="value" id="battle-enemy-power"></div></div>
+              <div class="battle-stat"><div class="label">轮次</div><div class="value" id="battle-round"></div></div>
+            </div>
+            <div class="battle-order" id="battle-order"></div>
+            <div class="battle-layout">
+              <div class="battle-grid" id="battle-grid"></div>
+              <div class="battle-side">
+                <div class="battle-panel">
+                  <h3 id="battle-unit-title"></h3>
+                  <div class="tip" id="battle-unit-desc"></div>
+                  <div class="tip" id="battle-logline"></div>
+                  <button class="action" id="battle-end-turn-btn">结束战斗回合</button>
+                </div>
+                <div class="battle-panel">
+                  <h4>战斗记录</h4>
+                  <div class="log" id="battle-log"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="battle-result hidden" id="battle-result-view">
+            <div class="battle-result-head">
+              <h2 id="battle-result-title"></h2>
+              <p id="battle-result-flavor"></p>
+            </div>
+            <div class="battle-result-grid">
+              <div class="battle-result-card"><div class="label">战斗轮次</div><div class="value" id="battle-result-round"></div></div>
+              <div class="battle-result-card"><div class="label">获得经验</div><div class="value" id="battle-result-xp"></div></div>
+              <div class="battle-result-card"><div class="label">拾获战利品</div><div class="value" id="battle-result-loot"></div></div>
+            </div>
+            <div class="battle-result-card">
+              <div class="label">我方损失</div>
+              <div class="battle-result-list" id="battle-result-losses"></div>
+            </div>
+            <div class="battle-result-card">
+              <div class="label">战场清理</div>
+              <div class="tip" id="battle-result-cleanup"></div>
+            </div>
+            <button class="action" id="battle-result-confirm-btn">打扫战场并返回地图</button>
           </div>
           <div class="castle-view hidden" id="castle-view">
             <div class="castle-head">

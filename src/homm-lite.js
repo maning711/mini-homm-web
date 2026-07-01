@@ -24,7 +24,34 @@ const els = {
   castleBuildings: document.getElementById("castle-buildings"),
   heroList: document.getElementById("hero-list"),
   openCastleBtn: document.getElementById("open-castle-btn"),
+  mapOverviewCastle: document.getElementById("map-overview-castle"),
+  mapOverviewMines: document.getElementById("map-overview-mines"),
+  mapOverviewThreat: document.getElementById("map-overview-threat"),
+  mapOverviewFront: document.getElementById("map-overview-front"),
   mapScreen: document.getElementById("map-screen"),
+  battleView: document.getElementById("battle-view"),
+  battleResultView: document.getElementById("battle-result-view"),
+  battleFlavor: document.getElementById("battle-flavor"),
+  battleTurn: document.getElementById("battle-turn"),
+  battlePlayerPower: document.getElementById("battle-player-power"),
+  battleEnemyPower: document.getElementById("battle-enemy-power"),
+  battleRound: document.getElementById("battle-round"),
+  battleOrder: document.getElementById("battle-order"),
+  battleGrid: document.getElementById("battle-grid"),
+  battleUnitTitle: document.getElementById("battle-unit-title"),
+  battleUnitDesc: document.getElementById("battle-unit-desc"),
+  battleLogline: document.getElementById("battle-logline"),
+  battleLog: document.getElementById("battle-log"),
+  battleEndTurnBtn: document.getElementById("battle-end-turn-btn"),
+  battleRetreatBtn: document.getElementById("battle-retreat-btn"),
+  battleResultTitle: document.getElementById("battle-result-title"),
+  battleResultFlavor: document.getElementById("battle-result-flavor"),
+  battleResultRound: document.getElementById("battle-result-round"),
+  battleResultXp: document.getElementById("battle-result-xp"),
+  battleResultLoot: document.getElementById("battle-result-loot"),
+  battleResultLosses: document.getElementById("battle-result-losses"),
+  battleResultCleanup: document.getElementById("battle-result-cleanup"),
+  battleResultConfirmBtn: document.getElementById("battle-result-confirm-btn"),
   castleView: document.getElementById("castle-view"),
   castleExitBtn: document.getElementById("castle-exit-btn"),
   castleFlavor: document.getElementById("castle-flavor"),
@@ -50,6 +77,7 @@ const els = {
 const TILE_TYPES = ["grass", "forest", "grass", "hill", "grass"];
 const UNIT_COLORS = ["#e6f0ff", "#7cd2ff", "#8ff0a2", "#ffd46a", "#ff8f8f"];
 const SAVE_KEY = "mini-homm-web-save-v2";
+const SAVE_VERSION = 3;
 const WIN_TARGETS = {
   mines: 3,
   defeatedEnemies: 6,
@@ -100,6 +128,52 @@ const UNIT_OFFERS = [
   { tier: 2, name: "弓兵", unlock: 2, baseCost: 85, weekly: 5 },
   { tier: 3, name: "骑士侍从", unlock: 3, baseCost: 140, weekly: 3 },
 ];
+const RESOURCE_ICONS = {
+  gold: "◈",
+  wood: "▥",
+  ore: "⬒",
+  crystal: "✦",
+};
+const DISTRICT_ICONS = {
+  townHall: "♛",
+  barracks: "⚔",
+  mageTower: "✧",
+  market: "⛁",
+  tavern: "☖",
+  fort: "▣",
+};
+const SPELL_ICONS = {
+  疾行术: "➹",
+  护体石肤: "⬓",
+  火焰箭: "✹",
+  侦察之眼: "◉",
+  鼓舞术: "✪",
+};
+const UNIT_ICONS = {
+  1: "🛡",
+  2: "🏹",
+  3: "🐎",
+};
+const UNIT_PORTRAITS = {
+  1: "🪖",
+  2: "🧝",
+  3: "🫅",
+};
+const ENEMY_UNIT_NAMES = {
+  1: "匪徒",
+  2: "弩手",
+  3: "黑卫",
+};
+const ENEMY_UNIT_ICONS = {
+  1: "☠",
+  2: "⚷",
+  3: "♞",
+};
+const ENEMY_UNIT_PORTRAITS = {
+  1: "👺",
+  2: "🦹",
+  3: "💀",
+};
 
 let state = createInitialState();
 
@@ -112,6 +186,8 @@ function createInitialState() {
     selectedDistrict: "townHall",
     activeHeroId: "hero-1",
     activeSpell: null,
+    battle: null,
+    battleResult: null,
     defeatedEnemies: 0,
     castleRaids: 0,
     gameOver: false,
@@ -194,16 +270,147 @@ function createInitialState() {
       { x: 15, y: 16, type: "moves", visitedBy: [] },
     ],
     enemies: [
-      { id: "enemy-1", x: 10, y: 14, power: 24, reward: { gold: 300 }, tier: 2, moves: 3 },
-      { id: "enemy-2", x: 14, y: 10, power: 38, reward: { gold: 450, wood: 1 }, tier: 3, moves: 3 },
-      { id: "enemy-3", x: 6, y: 6, power: 18, reward: { ore: 1, gold: 220 }, tier: 1, moves: 2 },
+      createEnemy("enemy-1", 10, 14, 2, 3, { gold: 300 }, [{ tier: 1, count: 8 }, { tier: 2, count: 3 }]),
+      createEnemy("enemy-2", 14, 10, 3, 3, { gold: 450, wood: 1 }, [{ tier: 2, count: 7 }, { tier: 3, count: 2 }]),
+      createEnemy("enemy-3", 6, 6, 1, 2, { ore: 1, gold: 220 }, [{ tier: 1, count: 7 }]),
     ],
     logs: [],
   };
 }
 
+function createEnemy(id, x, y, tier, moves, reward, army) {
+  return {
+    id,
+    x,
+    y,
+    tier,
+    moves,
+    reward,
+    army,
+    power: getEnemyArmyPower(army),
+  };
+}
+
 function getActiveHero() {
   return state.heroes.find((hero) => hero.id === state.activeHeroId) || state.heroes[0];
+}
+
+function cloneArmy(army) {
+  return army.map((unit) => ({ tier: unit.tier, count: unit.count }));
+}
+
+function createSavePayload() {
+  const snapshot = JSON.parse(JSON.stringify(state));
+  snapshot.battle = null;
+  snapshot.battleResult = null;
+  snapshot.screen = "map";
+  return {
+    version: SAVE_VERSION,
+    savedAt: new Date().toISOString(),
+    state: snapshot,
+  };
+}
+
+function persistState({ announce = false } = {}) {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(createSavePayload()));
+  if (announce) {
+    log("已保存当前战役进度。");
+  }
+}
+
+function hydrateState(parsed) {
+  const loadedState = parsed?.state || parsed;
+  state = { ...createInitialState(), ...loadedState };
+  state.battle = null;
+  state.battleResult = null;
+  if (state.screen !== "castle" && state.screen !== "map") state.screen = "map";
+}
+
+function tryRestoreSavedState({ announce = false } = {}) {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw);
+    hydrateState(parsed);
+    if (announce) {
+      const savedAt = parsed?.savedAt ? `（${new Date(parsed.savedAt).toLocaleString("zh-CN")}）` : "";
+      log(`已读取战役进度${savedAt}。`);
+    }
+    return true;
+  } catch {
+    log("存档损坏，无法读取。");
+    return false;
+  }
+}
+
+function getUnitIcon(tier, side = "player") {
+  return side === "enemy" ? ENEMY_UNIT_ICONS[tier] || "✦" : UNIT_ICONS[tier] || "★";
+}
+
+function getUnitPortrait(tier, side = "player") {
+  return side === "enemy" ? ENEMY_UNIT_PORTRAITS[tier] || "👹" : UNIT_PORTRAITS[tier] || "🧙";
+}
+
+function getDistrictIcon(key) {
+  return DISTRICT_ICONS[key] || "◼";
+}
+
+function getSpellIcon(spell) {
+  return SPELL_ICONS[spell] || "✧";
+}
+
+function getResourceIcon(type) {
+  return RESOURCE_ICONS[type] || "•";
+}
+
+function createBattleState(hero, enemy, enemyIndex) {
+  return {
+    round: 1,
+    side: "player",
+    actorId: "player-0",
+    selectedUnitId: null,
+    selectedCell: null,
+    enemyIndex,
+    heroId: hero.id,
+    enemyId: enemy.id,
+    logs: [`${hero.name} 遭遇了 ${formatEnemyArmy(enemy)}。`],
+    playerUnits: hero.army.map((unit, index) => ({
+      id: `player-${index}`,
+      side: "player",
+      tier: unit.tier,
+      icon: getUnitIcon(unit.tier, "player"),
+      portrait: getUnitPortrait(unit.tier, "player"),
+      name: UNIT_OFFERS.find((item) => item.tier === unit.tier)?.name || `${unit.tier}阶兵`,
+      count: unit.count,
+      attack: hero.attack + unit.tier * 2,
+      defense: hero.defense + unit.tier,
+      hp: 6 + unit.tier * 4,
+      maxHp: 6 + unit.tier * 4,
+      speed: 3 + unit.tier,
+      x: 0,
+      y: Math.min(5, index * 2 + 1),
+      acted: false,
+      retaliated: false,
+    })),
+    enemyUnits: enemy.army.map((unit, index) => ({
+      id: `enemy-${index}`,
+      side: "enemy",
+      tier: unit.tier,
+      icon: getUnitIcon(unit.tier, "enemy"),
+      portrait: getUnitPortrait(unit.tier, "enemy"),
+      name: ENEMY_UNIT_NAMES[unit.tier] || `${unit.tier}阶敌军`,
+      count: unit.count,
+      attack: enemy.tier + unit.tier * 2,
+      defense: enemy.tier + unit.tier,
+      hp: 6 + unit.tier * 4,
+      maxHp: 6 + unit.tier * 4,
+      speed: 3 + unit.tier,
+      x: 7,
+      y: Math.min(5, index * 2 + 1),
+      acted: false,
+      retaliated: false,
+    })),
+  };
 }
 
 function log(text) {
@@ -291,6 +498,45 @@ function getHeroPower(hero) {
   return armyPower + (hero.attack + bonusAttack) * 4 + (hero.defense + bonusDefense) * 3 + hero.level * 4 + hero.spells.length * 2;
 }
 
+function getHeroArmyCount(hero) {
+  return hero.army.reduce((sum, unit) => sum + unit.count, 0);
+}
+
+function getHeroAttackScore(hero) {
+  const bonusAttack = getEffectValue(hero, "attack");
+  return (
+    hero.army.reduce((sum, unit) => sum + unit.count * (unit.tier * 4 + 1), 0) +
+    (hero.attack + bonusAttack) * 7 +
+    hero.level * 4 +
+    hero.spells.length * 3
+  );
+}
+
+function getHeroDefenseScore(hero) {
+  const bonusDefense = getEffectValue(hero, "defense");
+  return getHeroArmyCount(hero) * 2 + (hero.defense + bonusDefense) * 8 + hero.level * 3;
+}
+
+function getEnemyArmyPower(army) {
+  return army.reduce((sum, unit) => sum + unit.count * (unit.tier * 4 + 2), 0);
+}
+
+function getEnemyArmyCount(enemy) {
+  return enemy.army.reduce((sum, unit) => sum + unit.count, 0);
+}
+
+function formatEnemyArmy(enemy) {
+  return enemy.army.map((unit) => `${ENEMY_UNIT_NAMES[unit.tier] || `${unit.tier}阶敌军`}x${unit.count}`).join(" / ");
+}
+
+function getEnemyAttackScore(enemy) {
+  return enemy.army.reduce((sum, unit) => sum + unit.count * (unit.tier * 4 + 1), 0) + enemy.tier * 6;
+}
+
+function getEnemyDefenseScore(enemy) {
+  return getEnemyArmyCount(enemy) * 2 + enemy.tier * 7;
+}
+
 function getEffectValue(hero, stat) {
   return hero.effects
     .filter((effect) => effect.stat === stat)
@@ -320,12 +566,6 @@ function tickHeroEffects(hero) {
 function formatHeroEffects(hero) {
   if (!hero.effects.length) return "无";
   return hero.effects.map((effect) => `${effect.name} ${effect.days}天`).join(" / ");
-}
-
-function tickHeroEffects(hero) {
-  hero.effects = hero.effects
-    .map((effect) => ({ ...effect, days: effect.days - 1 }))
-    .filter((effect) => effect.days > 0);
 }
 
 function getDistrictLevel(key) {
@@ -481,7 +721,8 @@ function castSpell(spell) {
       render();
       return;
     }
-    target.power = Math.max(1, target.power - 8);
+    applyEnemyArmyLoss(target, 2 + state.castle.mageTowerLevel);
+    target.power = getEnemyArmyPower(target.army);
     log(`${hero.name} 用火焰箭重创了附近敌军。`);
   } else if (spell === "侦察之眼") {
     applyHeroEffect(hero, { id: "scout-eye", name: "侦察", stat: "move", value: 1, days: 3 });
@@ -558,38 +799,342 @@ function resolveTile(hero, x, y) {
 function resolveBattle(hero, enemyIndex) {
   const enemy = state.enemies[enemyIndex];
   if (!enemy) return;
-  const power = getHeroPower(hero);
-  const loss = getBattleLoss(hero, enemy);
-  if (power >= enemy.power) {
-    state.enemies.splice(enemyIndex, 1);
-    Object.entries(enemy.reward).forEach(([type, amount]) => {
-      state.resources[type] += amount;
+  const heroArmyBefore = cloneArmy(hero.army);
+  state.battle = createBattleState(hero, enemy, enemyIndex);
+  state.battle.heroArmyBefore = heroArmyBefore;
+  state.screen = "battle";
+  render();
+}
+
+function getBattlePreview(hero, enemy) {
+  const attackScore = getHeroAttackScore(hero);
+  const defenseScore = getHeroDefenseScore(hero);
+  const totalScore = attackScore + defenseScore;
+  const enemyScore = getEnemyAttackScore(enemy) + getEnemyDefenseScore(enemy);
+  const margin = totalScore - enemyScore;
+  const outcome = margin >= 0 ? "win" : "retreat";
+  const baseLoss =
+    outcome === "win"
+      ? Math.max(0, Math.ceil((enemyScore - attackScore * 0.55) / 20))
+      : Math.max(1, Math.ceil((enemyScore - totalScore) / 12) + 1);
+  const losses = Math.min(getHeroArmyCount(hero) - 1, Math.max(0, baseLoss));
+  return {
+    outcome,
+    losses,
+    flawless: outcome === "win" && losses === 0,
+    margin,
+  };
+}
+
+function getBattleUnitAt(x, y) {
+  if (!state.battle) return null;
+  return [...state.battle.playerUnits, ...state.battle.enemyUnits].find((unit) => unit.x === x && unit.y === y) || null;
+}
+
+function getBattleUnitById(id) {
+  if (!state.battle) return null;
+  return [...state.battle.playerUnits, ...state.battle.enemyUnits].find((unit) => unit.id === id) || null;
+}
+
+function getBattleUnits(side) {
+  if (!state.battle) return [];
+  return side === "player" ? state.battle.playerUnits : state.battle.enemyUnits;
+}
+
+function getBattleArmyPower(side) {
+  return getBattleUnits(side).reduce((sum, unit) => sum + unit.count * (unit.attack + unit.defense + unit.tier * 2), 0);
+}
+
+function getBattleSelectedUnit() {
+  if (!state.battle) return null;
+  return getBattleUnitById(state.battle.selectedUnitId || state.battle.actorId);
+}
+
+function getNextBattleUnit(side) {
+  const units = getBattleUnits(side).filter((unit) => unit.count > 0 && !unit.acted);
+  return units.sort((a, b) => b.speed - a.speed || b.tier - a.tier || b.count - a.count)[0] || null;
+}
+
+function getBattleInitiativeUnit() {
+  const nextPlayer = getNextBattleUnit("player");
+  const nextEnemy = getNextBattleUnit("enemy");
+  if (!nextPlayer) return nextEnemy;
+  if (!nextEnemy) return nextPlayer;
+  if (nextPlayer.speed !== nextEnemy.speed) return nextPlayer.speed > nextEnemy.speed ? nextPlayer : nextEnemy;
+  if (nextPlayer.tier !== nextEnemy.tier) return nextPlayer.tier > nextEnemy.tier ? nextPlayer : nextEnemy;
+  return nextPlayer.count >= nextEnemy.count ? nextPlayer : nextEnemy;
+}
+
+function getBattleInitiativeOrder() {
+  if (!state.battle) return [];
+  return [...state.battle.playerUnits, ...state.battle.enemyUnits]
+    .filter((unit) => unit.count > 0)
+    .sort((a, b) => {
+      if (a.acted !== b.acted) return a.acted ? 1 : -1;
+      if (a.speed !== b.speed) return b.speed - a.speed;
+      if (a.tier !== b.tier) return b.tier - a.tier;
+      if (a.count !== b.count) return b.count - a.count;
+      return a.side === "player" ? -1 : 1;
     });
-    applyArmyLoss(hero, loss);
-    gainXp(hero, enemy.power);
-    state.defeatedEnemies += 1;
-    log(`${hero.name} 击败了 ${enemy.tier} 阶敌军，战力 ${power} 对 ${enemy.power}，损失 ${loss} 名低阶兵。`);
-    checkObjectives();
+}
+
+function resetBattleRoundFlags() {
+  if (!state.battle) return;
+  [...state.battle.playerUnits, ...state.battle.enemyUnits].forEach((unit) => {
+    unit.acted = false;
+    unit.retaliated = false;
+  });
+}
+
+function getBattleReachable(unit) {
+  const cells = new Set();
+  for (let dx = -unit.speed; dx <= unit.speed; dx += 1) {
+    for (let dy = -unit.speed; dy <= unit.speed; dy += 1) {
+      const dist = Math.abs(dx) + Math.abs(dy);
+      if (dist === 0 || dist > unit.speed) continue;
+      const x = unit.x + dx;
+      const y = unit.y + dy;
+      if (x < 0 || x > 7 || y < 0 || y > 5) continue;
+      if (getBattleUnitAt(x, y)) continue;
+      cells.add(`${x},${y}`);
+    }
+  }
+  return cells;
+}
+
+function getBattleAttackable(unit) {
+  const cells = new Set();
+  const targets = unit.side === "player" ? state.battle.enemyUnits : state.battle.playerUnits;
+  targets.forEach((target) => {
+    const dist = Math.abs(target.x - unit.x) + Math.abs(target.y - unit.y);
+    if (dist <= 1 + Math.max(0, unit.speed - 4)) cells.add(`${target.x},${target.y}`);
+  });
+  return cells;
+}
+
+function handleBattleCellClick(x, y) {
+  if (!state.battle || state.battle.side !== "player") return;
+  const clicked = getBattleUnitAt(x, y);
+  const selected = getBattleSelectedUnit();
+
+  if (clicked?.side === "player") {
+    if (clicked.acted) return;
+    state.battle.selectedUnitId = clicked.id;
+    render();
     return;
   }
 
-  const retreatLoss = Math.max(loss + 1, Math.ceil((enemy.power - power) / 10));
-  applyArmyLoss(hero, retreatLoss);
-  hero.moves = 0;
-  retreatHero(hero);
-  log(`${hero.name} 被敌军压退，损失了 ${retreatLoss} 名低阶兵。`);
+  if (!selected || selected.side !== "player" || selected.acted) return;
+  const reachable = getBattleReachable(selected);
+  const attackable = getBattleAttackable(selected);
+  const key = `${x},${y}`;
+
+  if (clicked?.side === "enemy" && attackable.has(key)) {
+    resolveBattleStrike(selected, clicked);
+    return;
+  }
+
+  if (!clicked && reachable.has(key)) {
+    selected.x = x;
+    selected.y = y;
+    state.battle.logs.unshift(`${selected.name} 调整了阵型。`);
+    state.battle.selectedUnitId = selected.id;
+    finalizeBattleRound();
+  }
 }
 
-function getBattleLoss(hero, enemy) {
-  const powerGap = Math.max(0, enemy.power - hero.defense * 5);
-  const advantage = Math.max(0, getHeroPower(hero) - enemy.power);
-  return Math.max(0, Math.ceil((powerGap - advantage * 0.35) / 22));
+function resolveBattleStrike(attacker, defender) {
+  const damage = Math.max(1, attacker.count * (attacker.attack + attacker.tier * 2) - defender.defense * Math.max(1, defender.count / 3));
+  const loss = Math.max(1, Math.ceil(damage / Math.max(5, defender.hp)));
+  attacker.acted = true;
+  defender.count = Math.max(0, defender.count - loss);
+  state.battle.logs.unshift(`${attacker.name} 攻击了 ${defender.name}，造成 ${loss} 名损失。`);
+  if (defender.count <= 0) {
+    state.battle.logs.unshift(`${defender.name} 被击溃。`);
+    if (defender.side === "enemy") state.battle.enemyUnits = state.battle.enemyUnits.filter((unit) => unit.id !== defender.id);
+    else state.battle.playerUnits = state.battle.playerUnits.filter((unit) => unit.id !== defender.id);
+  } else if (!defender.retaliated) {
+    resolveBattleRetaliation(defender, attacker);
+  }
+  finalizeBattleRound();
+}
+
+function resolveBattleRetaliation(defender, attacker) {
+  if (!state.battle || defender.count <= 0 || attacker.count <= 0) return;
+  const damage = Math.max(1, defender.count * (defender.attack + defender.tier) - attacker.defense * Math.max(1, attacker.count / 4));
+  const loss = Math.max(1, Math.ceil(damage / Math.max(6, attacker.hp * 1.5)));
+  defender.retaliated = true;
+  attacker.count = Math.max(0, attacker.count - loss);
+  state.battle.logs.unshift(`${defender.name} 进行了反击，${attacker.name} 损失 ${loss} 名。`);
+  if (attacker.count <= 0) {
+    state.battle.logs.unshift(`${attacker.name} 在反击中被击溃。`);
+    if (attacker.side === "enemy") state.battle.enemyUnits = state.battle.enemyUnits.filter((unit) => unit.id !== attacker.id);
+    else state.battle.playerUnits = state.battle.playerUnits.filter((unit) => unit.id !== attacker.id);
+  }
+}
+
+function finalizeBattleRound() {
+  if (!state.battle) return;
+  state.battle.playerUnits = state.battle.playerUnits.filter((unit) => unit.count > 0);
+  state.battle.enemyUnits = state.battle.enemyUnits.filter((unit) => unit.count > 0);
+  if (!state.battle.enemyUnits.length) {
+    finishBattle("victory");
+    return;
+  }
+  if (!state.battle.playerUnits.length) {
+    finishBattle("retreat");
+    return;
+  }
+  let nextUnit = getBattleInitiativeUnit();
+  if (!nextUnit) {
+    state.battle.round += 1;
+    resetBattleRoundFlags();
+    nextUnit = getBattleInitiativeUnit();
+  }
+  if (!nextUnit) {
+    render();
+    return;
+  }
+  state.battle.side = nextUnit.side;
+  state.battle.selectedUnitId = nextUnit.id;
+  if (nextUnit.side === "enemy") {
+    runEnemyBattleTurn();
+    return;
+  }
+  render();
+}
+
+function getBattleStepToward(unit, target) {
+  const options = [
+    { x: unit.x + Math.sign(target.x - unit.x), y: unit.y },
+    { x: unit.x, y: unit.y + Math.sign(target.y - unit.y) },
+    { x: unit.x + Math.sign(target.x - unit.x), y: unit.y + Math.sign(target.y - unit.y) },
+  ].filter((pos) => pos.x >= 0 && pos.x <= 7 && pos.y >= 0 && pos.y <= 5 && !getBattleUnitAt(pos.x, pos.y));
+
+  return (
+    options.sort((a, b) => {
+      const distA = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
+      const distB = Math.abs(b.x - target.x) + Math.abs(b.y - target.y);
+      return distA - distB;
+    })[0] || null
+  );
+}
+
+function runEnemyBattleTurn() {
+  if (!state.battle) return;
+  const enemyUnit = getBattleUnitById(state.battle.selectedUnitId) || getNextBattleUnit("enemy");
+  if (!enemyUnit) {
+    finalizeBattleRound();
+    return;
+  }
+  const target = state.battle.playerUnits
+    .map((unit) => ({ unit, dist: Math.abs(unit.x - enemyUnit.x) + Math.abs(unit.y - enemyUnit.y) }))
+    .sort((a, b) => a.dist - b.dist)[0]?.unit;
+  if (!enemyUnit || !target) return;
+  const dist = Math.abs(target.x - enemyUnit.x) + Math.abs(target.y - enemyUnit.y);
+  if (dist <= 1 + Math.max(0, enemyUnit.speed - 4)) {
+    resolveBattleStrike(enemyUnit, target);
+    return;
+  }
+  const next = getBattleStepToward(enemyUnit, target);
+  if (next) {
+    enemyUnit.x = next.x;
+    enemyUnit.y = next.y;
+  }
+  enemyUnit.acted = true;
+  state.battle.logs.unshift(`${enemyUnit.name} 压了上来。`);
+  finalizeBattleRound();
+}
+
+function finishBattle(result) {
+  if (!state.battle) return;
+  const hero = state.heroes.find((item) => item.id === state.battle.heroId);
+  const enemyIndex = state.enemies.findIndex((item) => item.id === state.battle.enemyId);
+  const enemy = state.enemies[enemyIndex];
+  if (!hero || !enemy) {
+    state.battle = null;
+    state.screen = "map";
+    render();
+    return;
+  }
+
+  const heroArmyAfter = state.battle.playerUnits.map((unit) => ({ tier: unit.tier, count: unit.count })).filter((unit) => unit.count > 0);
+  hero.army = heroArmyAfter;
+  const lootEntries = result === "victory" ? Object.entries(enemy.reward) : [];
+  const gainedXp = result === "victory" ? enemy.power : 0;
+  if (result === "victory") {
+    state.enemies.splice(enemyIndex, 1);
+    lootEntries.forEach(([type, amount]) => {
+      state.resources[type] += amount;
+    });
+    gainXp(hero, gainedXp);
+    state.defeatedEnemies += 1;
+    log(`${hero.name} 在战场上击败了敌军。`);
+  } else {
+    hero.moves = 0;
+    retreatHero(hero);
+    log(`${hero.name} 在战场上失利，只能撤退。`);
+  }
+  const beforeArmy = state.battle.heroArmyBefore || [];
+  state.battleResult = {
+    result,
+    heroName: hero.name,
+    round: state.battle.round,
+    xp: gainedXp,
+    loot: lootEntries,
+    losses: beforeArmy.map((beforeUnit) => {
+      const afterUnit = heroArmyAfter.find((item) => item.tier === beforeUnit.tier);
+      const lost = beforeUnit.count - (afterUnit?.count || 0);
+      return {
+        tier: beforeUnit.tier,
+        name: UNIT_OFFERS.find((item) => item.tier === beforeUnit.tier)?.name || `${beforeUnit.tier}阶兵`,
+        icon: getUnitIcon(beforeUnit.tier),
+        lost: Math.max(0, lost),
+      };
+    }).filter((item) => item.lost > 0),
+    cleanup: result === "victory" ? "士兵在尸骸与辎重中收拢可用物资，旗手重新整队，准备继续推进。" : "残兵回收可携行装备，伤员被护送后撤，战场上的一切被迅速舍弃。",
+  };
+  state.battle = null;
+  state.screen = "battle-result";
+  render();
+}
+
+function confirmBattleResult() {
+  if (!state.battleResult) return;
+  state.battleResult = null;
+  state.screen = "map";
+  checkObjectives();
+  render();
 }
 
 function applyArmyLoss(hero, loss) {
-  const lowest = hero.army.find((unit) => unit.count > 0);
-  if (!lowest || loss <= 0) return;
-  lowest.count = Math.max(1, lowest.count - loss);
+  if (loss <= 0) return;
+  let remaining = loss;
+  const mutableArmy = [...hero.army].sort((a, b) => a.tier - b.tier);
+  for (const unit of mutableArmy) {
+    if (remaining <= 0) break;
+    const keepOne = mutableArmy.length === 1 ? 1 : 0;
+    const removable = Math.max(0, unit.count - keepOne);
+    const taken = Math.min(removable, remaining);
+    unit.count -= taken;
+    remaining -= taken;
+  }
+  hero.army = mutableArmy.filter((unit) => unit.count > 0);
+}
+
+function applyEnemyArmyLoss(enemy, loss) {
+  if (loss <= 0) return;
+  let remaining = loss;
+  const mutableArmy = [...enemy.army].sort((a, b) => b.tier - a.tier);
+  for (const unit of mutableArmy) {
+    if (remaining <= 0) break;
+    const removable = Math.max(0, unit.count);
+    const taken = Math.min(removable, remaining);
+    unit.count -= taken;
+    remaining -= taken;
+  }
+  enemy.army = mutableArmy.filter((unit) => unit.count > 0).sort((a, b) => a.tier - b.tier);
+  enemy.power = getEnemyArmyPower(enemy.army);
 }
 
 function gainXp(hero, amount) {
@@ -630,12 +1175,26 @@ function retreatHero(hero) {
   if (fallback) [hero.x, hero.y] = fallback;
 }
 
+function retreatFromBattle() {
+  if (!state.battle) return;
+  finishBattle("retreat");
+}
+
+function skipBattleUnitTurn() {
+  if (!state.battle || state.battle.side !== "player") return;
+  const unit = getBattleSelectedUnit();
+  if (!unit || unit.side !== "player" || unit.acted) return;
+  unit.acted = true;
+  state.battle.logs.unshift(`${unit.name} 选择按兵不动。`);
+  finalizeBattleRound();
+}
+
 function resourceLabel(type) {
   return {
-    gold: "金币",
-    wood: "木材",
-    ore: "矿石",
-    crystal: "水晶",
+    gold: `${getResourceIcon("gold")} 金币`,
+    wood: `${getResourceIcon("wood")} 木材`,
+    ore: `${getResourceIcon("ore")} 矿石`,
+    crystal: `${getResourceIcon("crystal")} 水晶`,
   }[type];
 }
 
@@ -794,15 +1353,13 @@ function spawnEnemy() {
       movementCost(x, y) < 99
     ) {
       const tier = 1 + Math.floor(Math.random() * 3);
-      state.enemies.push({
-        id: `enemy-${Date.now()}-${i}`,
-        x,
-        y,
-        tier,
-        moves: 2 + (tier > 1 ? 1 : 0),
-        power: 16 + tier * 10 + Math.floor(Math.random() * 8),
-        reward: { gold: 180 + tier * 120 },
-      });
+      const army =
+        tier === 1
+          ? [{ tier: 1, count: 6 + Math.floor(Math.random() * 4) }]
+          : tier === 2
+            ? [{ tier: 1, count: 4 + Math.floor(Math.random() * 3) }, { tier: 2, count: 2 + Math.floor(Math.random() * 2) }]
+            : [{ tier: 2, count: 4 + Math.floor(Math.random() * 3) }, { tier: 3, count: 1 + Math.floor(Math.random() * 2) }];
+      state.enemies.push(createEnemy(`enemy-${Date.now()}-${i}`, x, y, tier, 2 + (tier > 1 ? 1 : 0), { gold: 180 + tier * 120 }, army));
       log("北侧出现了一支新的中立敌军。");
       return;
     }
@@ -823,30 +1380,24 @@ function closeCastleScreen() {
 }
 
 function saveGame() {
-  localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  log("已保存当前战役进度。");
+  persistState({ announce: true });
   render();
 }
 
 function loadGame() {
-  const raw = localStorage.getItem(SAVE_KEY);
-  if (!raw) {
-    log("还没有可读取的存档。");
+  if (!tryRestoreSavedState({ announce: true })) {
+    if (!localStorage.getItem(SAVE_KEY)) {
+      log("还没有可读取的存档。");
+    }
     render();
     return;
-  }
-  try {
-    const parsed = JSON.parse(raw);
-    state = { ...createInitialState(), ...parsed };
-    log("已读取战役进度。");
-  } catch {
-    log("存档损坏，无法读取。");
   }
   render();
 }
 
 function restartGame() {
   state = createInitialState();
+  persistState();
   log("新的战役开始了。");
   render();
 }
@@ -1072,9 +1623,10 @@ function getSelectedTileInfo() {
   if (hero) parts.push(`${hero.name}，战力 ${getHeroPower(hero)}。`);
   if (enemy) {
     const activeHero = getActiveHero();
-    const loss = getBattleLoss(activeHero, enemy);
-    const result = getHeroPower(activeHero) >= enemy.power ? `可战，预计损失 ${loss} 名低阶兵` : "风险过高，可能撤退";
-    parts.push(`${enemy.tier} 阶敌军，战力 ${enemy.power}，${result}。`);
+    const preview = getBattlePreview(activeHero, enemy);
+    const result =
+      preview.outcome === "win" ? `可战，预计损失 ${preview.losses} 名兵力` : `风险过高，预计损失 ${preview.losses} 名兵力`;
+    parts.push(`${enemy.tier} 阶敌军，编队 ${formatEnemyArmy(enemy)}，战力 ${enemy.power}，${result}。`);
   }
   if (mine) parts.push(`${resourceLabel(mine.type)} 矿点，当前${mine.owner === "player" ? "已占领" : "中立"}。`);
   if (pickup) parts.push(`可拾取 ${pickup.amount} ${resourceLabel(pickup.type)}。`);
@@ -1085,42 +1637,69 @@ function getSelectedTileInfo() {
 
 function getActionInfo(hero) {
   const nearCastle = Math.abs(hero.x - state.castle.x) + Math.abs(hero.y - state.castle.y) <= 1;
+  if (state.screen === "battle" && state.battle) {
+    return "战斗中：选择己方部队，点击高亮格移动或攻击敌军。";
+  }
   if (state.screen === "castle") {
     return `已进入城堡，可升级建筑、研习法术、招募英雄和补充驻军。当前英雄：${hero.name}。`;
   }
   return nearCastle ? "靠近城堡，可进入城堡发展或补兵。" : "点击城堡格进入城堡。";
 }
 
+function getFrontStatusText() {
+  const threat = getThreatLevel();
+  if (state.castleRaids >= 2) return "边境告急";
+  if (threat >= 180) return "敌影密布";
+  if (threat >= 110) return "战云渐浓";
+  if (getOwnedMineCount() >= 2) return "我军推进";
+  return "谨慎扩张";
+}
+
 function renderMap() {
   const hero = getActiveHero();
   const reachable = getReachable(hero);
+  els.mapOverviewCastle.textContent = `Lv.${state.castle.level}`;
+  els.mapOverviewMines.textContent = `${getOwnedMineCount()} / ${state.mines.length}`;
+  els.mapOverviewThreat.textContent = `${state.enemies.length} 队`;
+  els.mapOverviewFront.textContent = getFrontStatusText();
   document.querySelectorAll(".tile").forEach((tile) => {
     const x = Number(tile.dataset.x);
     const y = Number(tile.dataset.y);
     tile.classList.toggle("reachable", reachable.cells.has(`${x},${y}`));
     tile.classList.toggle("selected", state.selected.x === x && state.selected.y === y);
+    tile.classList.remove("castle-tile", "mine-tile", "shrine-tile", "enemy-tile");
     tile.innerHTML = "";
 
     if (state.castle.x === x && state.castle.y === y) {
-      tile.innerHTML = `<div class="entity castle">♜</div>`;
+      tile.classList.add("castle-tile");
+      tile.innerHTML = `<div class="entity castle">🏰</div>`;
     }
 
     const mine = state.mines.find((item) => item.x === x && item.y === y);
-    if (mine) tile.innerHTML = `<div class="entity mine">⬢</div><div class="badge">${mine.owner === "player" ? "我" : "矿"}</div>`;
+    if (mine) {
+      tile.classList.add("mine-tile");
+      tile.innerHTML = `<div class="entity mine">${getResourceIcon(mine.type)}</div><div class="badge">${mine.owner === "player" ? "我" : "矿"}</div>`;
+    }
 
     const pickup = state.pickups.find((item) => item.x === x && item.y === y);
-    if (pickup) tile.innerHTML = `<div class="entity resource">◆</div>`;
+    if (pickup) tile.innerHTML = `<div class="entity resource">${getResourceIcon(pickup.type)}</div>`;
 
     const shrine = state.shrines.find((item) => item.x === x && item.y === y);
-    if (shrine) tile.innerHTML = `<div class="entity shrine">✦</div><div class="badge">坛</div>`;
+    if (shrine) {
+      tile.classList.add("shrine-tile");
+      tile.innerHTML = `<div class="entity shrine">${shrine.type === "attack" ? "⚑" : shrine.type === "defense" ? "⛨" : "➠"}</div><div class="badge">坛</div>`;
+    }
 
     const enemy = state.enemies.find((item) => item.x === x && item.y === y);
-    if (enemy) tile.innerHTML = `<div class="entity hero-red">★</div><div class="badge">${enemy.tier}</div>`;
+    if (enemy) {
+      tile.classList.add("enemy-tile");
+      tile.innerHTML = `<div class="entity hero-red">${getUnitIcon(enemy.tier, "enemy")}</div><div class="badge">${enemy.tier}</div>`;
+    }
 
     const heroOnTile = state.heroes.find((item) => item.x === x && item.y === y);
     if (heroOnTile) {
       const heroIndex = state.heroes.findIndex((item) => item.id === heroOnTile.id) + 1;
-      tile.innerHTML = `<div class="entity hero-blue">★</div><div class="badge">${heroIndex}</div>`;
+      tile.innerHTML = `<div class="entity hero-blue">${heroIndex === 1 ? "♘" : "♗"}</div><div class="badge">${heroIndex}</div>`;
     }
   });
 }
@@ -1147,7 +1726,7 @@ function renderCastleView() {
     return `
       <div class="district${active}">
         <div class="title">
-          <strong>${item.name}</strong>
+          <strong>${getDistrictIcon(key)} ${item.name}</strong>
           <span>Lv.${level}</span>
         </div>
         <div class="meta">${item.levelNames[level]}</div>
@@ -1174,14 +1753,14 @@ function renderCastleView() {
   els.districtActionBtn.onclick = action.onClick;
 
   els.spellList.innerHTML = hero.spells.length
-    ? hero.spells.map((spell) => `<div class="spell-item"><span>${spell}</span><strong>法力 ${hero.mana}</strong></div>`).join("")
+    ? hero.spells.map((spell) => `<div class="spell-item"><span>${getSpellIcon(spell)} ${spell}</span><strong>法力 ${hero.mana}</strong></div>`).join("")
     : `<div class="spell-item"><span>暂无法术</span><strong>需要法师塔</strong></div>`;
 
   els.spellActions.innerHTML = hero.spells.length
     ? hero.spells
         .map(
           (spell) =>
-            `<button class="action secondary" data-cast-spell="${spell}" ${canCastSpell(hero, spell) ? "" : "disabled"}>施放 ${spell}</button>`,
+            `<button class="action secondary" data-cast-spell="${spell}" ${canCastSpell(hero, spell) ? "" : "disabled"}>${getSpellIcon(spell)} 施放 ${spell}</button>`,
         )
         .join("")
     : "";
@@ -1195,7 +1774,7 @@ function renderCastleView() {
     const locked = state.castle.barracksLevel < offer.unlock;
     return `
       <div class="garrison-item">
-        <span>${offer.name} ${locked ? "(未解锁)" : `可招募 ${available}`}</span>
+        <span>${getUnitIcon(offer.tier)} ${offer.name} ${locked ? "(未解锁)" : `可招募 ${available}`}</span>
         <button class="action secondary" data-tier="${offer.tier}" ${locked || available <= 0 ? "disabled" : ""}>招募</button>
       </div>
     `;
@@ -1204,6 +1783,86 @@ function renderCastleView() {
   els.garrisonList.querySelectorAll("[data-tier]").forEach((button) => {
     button.addEventListener("click", () => recruitTier(Number(button.dataset.tier)));
   });
+}
+
+function renderBattleView() {
+  if (!state.battle) return;
+  if (!state.battle.selectedUnitId) {
+    state.battle.selectedUnitId = getBattleInitiativeUnit()?.id || null;
+  }
+  const selected = getBattleSelectedUnit();
+  const reachable =
+    selected?.side === "player" && state.battle.side === "player" && !selected.acted ? getBattleReachable(selected) : new Set();
+  const attackable =
+    selected?.side === "player" && state.battle.side === "player" && !selected.acted ? getBattleAttackable(selected) : new Set();
+  const hero = state.heroes.find((item) => item.id === state.battle.heroId);
+  const enemy = state.enemies.find((item) => item.id === state.battle.enemyId);
+
+  els.battleFlavor.textContent = hero && enemy ? `${hero.name} 遭遇 ${formatEnemyArmy(enemy)}。` : "遭遇战";
+  els.battleTurn.textContent = selected ? `${selected.side === "player" ? "我方" : "敌军"} · ${selected.name}` : state.battle.side === "player" ? "我方行动" : "敌军行动";
+  els.battlePlayerPower.textContent = String(getBattleArmyPower("player"));
+  els.battleEnemyPower.textContent = String(getBattleArmyPower("enemy"));
+  els.battleRound.textContent = String(state.battle.round);
+  els.battleRetreatBtn.disabled = state.gameOver;
+  els.battleEndTurnBtn.disabled = state.gameOver || state.battle.side !== "player";
+  els.battleEndTurnBtn.textContent = "跳过当前单位";
+  els.battleOrder.innerHTML = getBattleInitiativeOrder()
+    .map((unit) => {
+      const active = selected && unit.id === selected.id ? " active" : "";
+      const acted = unit.acted ? " acted" : "";
+      return `<div class="battle-order-chip ${unit.side}${active}${acted}">${unit.icon} ${unit.name} · 速${unit.speed} · x${unit.count}</div>`;
+    })
+    .join("");
+
+  els.battleGrid.innerHTML = "";
+  for (let y = 0; y < 6; y += 1) {
+    for (let x = 0; x < 8; x += 1) {
+      const key = `${x},${y}`;
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "battle-cell";
+      if (reachable.has(key)) cell.classList.add("reachable");
+      if (attackable.has(key)) cell.classList.add("attackable");
+      if (selected && selected.x === x && selected.y === y) cell.classList.add("selected");
+      cell.addEventListener("click", () => handleBattleCellClick(x, y));
+
+      const unit = getBattleUnitAt(x, y);
+      if (unit) {
+        cell.innerHTML = `<div class="battle-unit ${unit.side}" style="${unit.acted ? "opacity:0.55;" : ""}"><div class="portrait">${unit.portrait}</div><div class="name">${unit.icon} ${unit.name}</div><div class="count">x${unit.count}${unit.acted ? " · 已行动" : ""}</div></div>`;
+      }
+      els.battleGrid.appendChild(cell);
+    }
+  }
+
+  els.battleUnitTitle.textContent = selected ? `${selected.side === "player" ? "我方" : "敌方"} · ${selected.portrait} ${selected.icon} ${selected.name}` : "未选中部队";
+  els.battleUnitDesc.textContent = selected
+    ? `数量 ${selected.count} · 攻 ${selected.attack} · 防 ${selected.defense} · 速 ${selected.speed} · 单体生命 ${selected.hp} · ${selected.acted ? "本轮已行动" : "本轮可行动"}`
+    : "选择一支部队查看属性。";
+  els.battleLogline.textContent = state.battle.logs[0] || "战斗开始。";
+  els.battleLog.innerHTML = state.battle.logs
+    .slice(0, 8)
+    .map((entry) => `<div class="log-entry">${entry}</div>`)
+    .join("");
+}
+
+function renderBattleResultView() {
+  if (!state.battleResult) return;
+  const resultText = state.battleResult.result === "victory" ? "战斗胜利" : "撤退整军";
+  els.battleResultView.classList.toggle("defeat", state.battleResult.result !== "victory");
+  els.battleResultTitle.textContent = resultText;
+  els.battleResultFlavor.textContent =
+    state.battleResult.result === "victory"
+      ? `${state.battleResult.heroName} 赢得了遭遇战，部队正在清点战果。`
+      : `${state.battleResult.heroName} 勉强脱离战场，残部正在重整旗鼓。`;
+  els.battleResultRound.textContent = `${state.battleResult.round}`;
+  els.battleResultXp.textContent = state.battleResult.xp ? `+${state.battleResult.xp}` : "0";
+  els.battleResultLoot.textContent = state.battleResult.loot.length
+    ? state.battleResult.loot.map(([type, amount]) => `${getResourceIcon(type)} ${amount}`).join(" / ")
+    : "无";
+  els.battleResultLosses.innerHTML = state.battleResult.losses.length
+    ? state.battleResult.losses.map((item) => `<div class="row"><span>${item.icon} ${item.name}</span><strong>- ${item.lost}</strong></div>`).join("")
+    : `<div class="tip">本次作战未出现编制损失。</div>`;
+  els.battleResultCleanup.textContent = state.battleResult.cleanup;
 }
 
 function renderSidebar() {
@@ -1240,7 +1899,7 @@ function renderSidebar() {
     .map((unit) => {
       const offer = UNIT_OFFERS.find((item) => item.tier === unit.tier);
       const color = UNIT_COLORS[Math.min(unit.tier - 1, UNIT_COLORS.length - 1)];
-      return `<div class="army-item"><div class="name"><span class="star" style="color:${color}">★</span><span>${offer ? offer.name : `${unit.tier} 阶兵`}</span></div><strong>${unit.count}</strong></div>`;
+      return `<div class="army-item"><div class="name"><span class="star" style="color:${color}">${getUnitIcon(unit.tier)}</span><span>${offer ? offer.name : `${unit.tier} 阶兵`}</span></div><strong>${unit.count}</strong></div>`;
     })
     .join("");
 
@@ -1272,16 +1931,22 @@ function formatCost(cost) {
 }
 
 function updateActionStates(hero) {
-  els.openCastleBtn.disabled = state.gameOver || state.screen === "castle";
+  const nearCastle = Math.abs(hero.x - state.castle.x) + Math.abs(hero.y - state.castle.y) <= 1;
+  els.openCastleBtn.disabled = state.gameOver || state.screen !== "map" || !nearCastle;
   els.endTurnBtn.disabled = state.gameOver;
 }
 
 function render() {
   renderMap();
-  renderSidebar();
   renderCastleView();
+  renderBattleView();
+  renderBattleResultView();
+  renderSidebar();
   els.mapScreen.classList.toggle("hidden", state.screen !== "map");
   els.castleView.classList.toggle("hidden", state.screen !== "castle");
+  els.battleView.classList.toggle("hidden", state.screen !== "battle");
+  els.battleResultView.classList.toggle("hidden", state.screen !== "battle-result");
+  persistState();
 }
 
 els.openCastleBtn.addEventListener("click", () => {
@@ -1292,6 +1957,9 @@ els.castleExitBtn.addEventListener("click", () => {
   closeCastleScreen();
   render();
 });
+els.battleRetreatBtn.addEventListener("click", retreatFromBattle);
+els.battleEndTurnBtn.addEventListener("click", skipBattleUnitTurn);
+els.battleResultConfirmBtn.addEventListener("click", confirmBattleResult);
 els.endTurnBtn.addEventListener("click", endTurn);
 els.saveBtn.addEventListener("click", saveGame);
 els.loadBtn.addEventListener("click", loadGame);
@@ -1299,5 +1967,8 @@ els.restartBtn.addEventListener("click", restartGame);
 
 buildMap();
 refillWeeklyReserve();
-log("第三版原型开始。城堡已经拥有独立经营界面。");
+if (!tryRestoreSavedState()) {
+  log("第三版原型开始。城堡已经拥有独立经营界面。");
+  persistState();
+}
 render();
